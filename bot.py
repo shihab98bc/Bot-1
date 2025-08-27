@@ -1,3 +1,6 @@
+# bot.py
+# Full A-Z bot with webhook (for PythonAnywhere). All original logic preserved.
+
 import os
 import orjson
 import logging
@@ -22,9 +25,13 @@ from diskcache import Cache
 import pyotp
 import json
 from bs4 import BeautifulSoup
+from flask import Flask, request
+import threading
+
+# ------------------ Configuration & Constants ------------------
+
 cache = Cache('cache_dir')
 IVASMS_NUMBERS_CACHE_KEY = 'ivasms_numbers_cache'
-
 
 load_dotenv("config.env")
 TOKEN = os.getenv("BOT_TOKEN")
@@ -38,9 +45,7 @@ ivasms_cache_lock = asyncio.Lock()
 INACTIVITY_TIMEOUT = 30 * 60
 group_id = -1002845536950
 
-BASE_URL_NUMBERS = "https://www.ivasms.com/portal/sms/received/getsms/number"
-BASE_URL_MESSAGES = "https://www.ivasms.com/portal/sms/received/getsms/number/sms"
-
+# Cookies & headers (kept exactly as in your upload)
 cookies = {
     "XSRF-TOKEN": "eyJpdiI6IlZraUNSK1dBdlFGYnpwUnpuYlBFTWc9PSIsInZhbHVlIjoia1NhNFYvWktxVmduYUFyb1A3endmcHUrbVgwMlJzeXVwTUdXbEJPNi9uVzd1SVRhQ2M3YWZDcU1qNWZjNHpwK0hkQ3Q0akRKYkd4OUVTSXNxZllEWmQ3OXlvbmM5MVQyYnFVWHZzOEJib1Q4OWU0TzF2d0kwSVlFK2h5SVJXaWciLCJtYWMiOiIxZjRjZmFiMTE2ZmU3YmQ3MGE0M2FhMTk1YjZjZWJiMmI0NzZlYjkzNzJiNmU2ODNkZDg3ZjU1NDdhZWI2MDRjIiwidGFnIjoiIn0%3D; expires=Sun, 24 Aug 2025 18:43:37",
     "ivas_sms_session": "eyJpdiI6IlV5VjlxSURQNlFrV0VPWUgxZ1Y3SHc9PSIsInZhbHVlIjoicFZpU050SE9TMWoxV0Qxdi9IRDZ6eHArWklQWmg4Mjkrbm1PcGdPUjlOVERyeUhxWWtrNDBZRklxZUxNd1laRWh0empxc2tLa0ZRSWF0MytQZ05pZnNUUnVxbVViVnNYNjNFYTdMYnc0STBIQ0RCSUxNR0VrdXFpMGZWNXltck4iLCJtYWMiOiJmNmJkZDdjNjAzN2U1MzNkZWI0ODFjZGY2OWVhNGY2ZDZiM2Y0YWExM2FiNTNmNjk5ZTY3ZTllZDI5MTdjOGMzIiwidGFnIjoiIn0%3D; expires=Sun, 24 Aug 2025"
@@ -78,6 +83,7 @@ BASE_HEADERS = {
     "Sec-Fetch-Dest": "empty",
     "Accept-Encoding": "gzip, deflate, br",
 }
+
 if not TOKEN or not EMAIL or not PASSWORD:
     raise RuntimeError("BOT_TOKEN, EMAIL, and PASSWORD must be set in config.env!")
 
@@ -93,7 +99,6 @@ headers_2fa = {
     "Referer": "https://2fa-auth.com/",
     "Origin": "https://2fa-auth.com",
 }
-
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
@@ -115,7 +120,7 @@ user_clients = {}
 
 COUNTRY_FLAGS = {
     "BOLIVIA": "🇧🇴",
-    "ARGENTINA": "🇦🇷", 
+    "ARGENTINA": "🇦🇷",
     "BRAZIL": "🇧🇷",
     "CHILE": "🇨🇱",
     "COLOMBIA": "🇨🇴",
@@ -299,6 +304,8 @@ ADMIN_ID = "5705479420"
 bot_password = None
 unlocked_users = set()
 
+# ------------------ Helper functions & caching ------------------
+
 def get_country_flag(range_name):
     for country, flag in COUNTRY_FLAGS.items():
         if country.upper() in range_name.upper():
@@ -333,7 +340,6 @@ def save_user_data():
             f.write(orjson.dumps(data_to_save))
     except Exception as e:
         logging.error(f"Error saving user data: {e}")
-
 
 def load_user_data():
     global user_data, bot_password
@@ -378,9 +384,12 @@ def save_ivasms_numbers_cache():
         print(f"[ivasms_cache] Saved {len(ivasms_numbers_cache)} numbers to diskcache.")
     except Exception as e:
         logging.error(f"[ivasms_cache] Error saving cache: {e}")
+
+# Load stored state on start
 load_user_data()
 load_ivasms_numbers_cache()
 
+# ------------------ Email helper ------------------
 
 def generate_email():
     name = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz1234567890', k=10))
@@ -393,14 +402,14 @@ async def fetch_mails(email):
     global client_httpx
     encoded_email = email.replace("@", "%40")
     url = f"https://tempmail.plus/api/mails?email={encoded_email}&first_id=0&epin="
-    headers = {
+    headers_local = {
         "User-Agent": "Mozilla/5.0",
         "Cookie": f"email={encoded_email}",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": "https://tempmail.plus/en/"
     }
     try:
-        r = await client_httpx.get(url, headers=headers)
+        r = await client_httpx.get(url, headers=headers_local)
         print(f"[fetch_mails] Step 1: status_code = {r.status_code}")
         if r.status_code == 200:
             data = r.json()
@@ -421,9 +430,9 @@ async def fetch_mail_content(email: str, mail_id: int | str) -> str:
     url = f"https://tempmail.plus/api/mails/{mail_id}"
     params = {"email": enc_email, "epin": ""}
     cookie_email = quote(email)
-    headers = {**BASE_HEADERS, "Cookie": f"email={cookie_email}"}
+    headers_local = {**BASE_HEADERS, "Cookie": f"email={cookie_email}"}
     try:
-        r = await client_httpx.get(url, params=params, headers=headers)
+        r = await client_httpx.get(url, params=params, headers=headers_local)
         print(f"[fetch_mail_content] status = {r.status_code}")
         if r.status_code == 200:
             data = r.json()
@@ -444,9 +453,7 @@ async def fetch_mail_content(email: str, mail_id: int | str) -> str:
         print(f"[fetch_mail_content] Exception: {e}")
     return "(Failed to fetch content)"
 
-
-
-
+# ------------------ IVASMS scraping & helpers ------------------
 
 async def login_ivasms_and_get_csrf(client: httpx.AsyncClient) -> str | None:
     try:
@@ -483,7 +490,6 @@ async def login_ivasms_and_get_csrf(client: httpx.AsyncClient) -> str | None:
     except Exception as e:
         logging.error(f"[login_ivasms_and_get_csrf] Exception: {e}")
     return None
-
 
 async def fetch_all_ivasms_numbers(client: httpx.AsyncClient) -> tuple[list[tuple[str, str]], str | None]:
     try:
@@ -553,9 +559,6 @@ async def fetch_all_ivasms_numbers(client: httpx.AsyncClient) -> tuple[list[tupl
     except Exception as e:
         logging.error(f"[fetch_all_ivasms_numbers] Exception: {e}")
     return [], None
-
-
-
 
 async def ivasms_numbers_refresher(admin_user_id: str | None = None):
     global ivasms_numbers_cache, ivasms_numbers_cache_ts
@@ -793,6 +796,8 @@ async def fetch_sms(client, csrf_token, number, range_name, user_id=None):
         logging.error(f"[fetch_sms] Exception: {e}")
     return None
 
+# ------------------ New scraper-style helpers (the ones in your file) ------------------
+
 async def load_saved_data():
     if os.path.exists("sms_data.json"):
         try:
@@ -820,8 +825,8 @@ async def get_csrf_token_async():
 async def extract_ranges_and_messages_async(token):
     url_ranges = "https://www.ivasms.com/portal/sms/received/getsms"
     data_ranges = {
-    "from": "2025-08-24",
-    "to": "2025-08-24",
+    "from": datetime.now().strftime("%Y-%m-%d"),
+    "to": datetime.now().strftime("%Y-%m-%d"),
         "_token": token
     }
     
@@ -856,14 +861,14 @@ async def extract_ranges_and_messages_async(token):
 async def extract_numbers_for_range_async(token, range_name):
     number_data = {
         "_token": token,
-        "start": "2025-08-24",
-        "end": "2025-08-24",
+        "start": datetime.now().strftime("%Y-%m-%d"),
+        "end": datetime.now().strftime("%Y-%m-%d"),
         "range": range_name
     }
     
     try:
         async with httpx.AsyncClient() as client:
-            number_resp = await client.post(BASE_URL_NUMBERS, headers=headers, cookies=cookies, data=number_data)
+            number_resp = await client.post("https://www.ivasms.com/portal/sms/received/getsms/number", headers=headers, cookies=cookies, data=number_data)
             
             if number_resp.status_code == 200:
                 number_soup = BeautifulSoup(number_resp.text, "html.parser")
@@ -911,15 +916,15 @@ async def get_sms_for_number_async(token, number, range_name):
     try:
         sms_data = {
             "_token": token,
-            "start": "2025-08-24",
-            "end": "2025-08-24",
+            "start": datetime.now().strftime("%Y-%m-%d"),
+            "end": datetime.now().strftime("%Y-%m-%d"),
             "Number": number,
             "Range": range_name
         }
         
         async with httpx.AsyncClient() as client:
             sms_resp = await client.post(
-                BASE_URL_MESSAGES,
+                "https://www.ivasms.com/portal/sms/received/getsms/number/sms",
                 headers=headers,
                 cookies=cookies,
                 data=sms_data
@@ -1009,7 +1014,7 @@ async def compare_and_find_new_data_async(token):
                     new_messages.append(new_message)
                     logging.info(f"📨 New messages for {number}: {message[:100]}...")
         
-        # تحديث البيانات الحالية
+        # update current_ranges numbers
         current_ranges[range_name]["numbers"] = current_numbers
     
     return new_messages
@@ -1089,7 +1094,7 @@ async def scrape_sms_data():
         logging.error(f"Error in scrape_sms_data: {e}")
         return []
 
-
+# ------------------ Monitoring loop ------------------
 
 async def start_sms_monitoring():
     print("🚀 Starting SMS monitoring every 20 seconds...")
@@ -1107,7 +1112,6 @@ async def start_sms_monitoring():
                 print(f"🎉 [{datetime.now().strftime('%H:%M:%S')}] Found {len(new_messages)} new messages!")
                 logging.info(f"🎉 Found {len(new_messages)} new messages!")
                 
-                # إرسال كل رسالة للمجموعة بشكل منفصل
                 for msg_data in new_messages:
                     try:
                         message_text = msg_data['message']
@@ -1137,7 +1141,6 @@ async def start_sms_monitoring():
                         print(f"📨 [{datetime.now().strftime('%H:%M:%S')}] Sent message to group: {msg_data['number']}")
                         logging.info(f"✅ Sent new message to group: {msg_data['number']}")
                         
-                        # انتظار قليلاً بين الرسائل لتجنب التقييد
                         await asyncio.sleep(2)
                         
                     except Exception as e:
@@ -1154,16 +1157,17 @@ async def start_sms_monitoring():
             logging.error(f"Error in SMS monitoring: {e}")
             await asyncio.sleep(60)
 
-async def fetch_2fa_code(keys: str, session: aiohttp.ClientSession) -> str | None:
+# ------------------ 2FA helper & sms_watcher ------------------
 
-    # توليد كود TOTP
+async def fetch_2fa_code(keys: str, session: aiohttp.ClientSession) -> str | None:
+    try:
         totp = pyotp.TOTP(keys.replace(" ", "").upper() )
         code = totp.now()
         return code
+    except Exception as e:
+        logging.error(f"[fetch_2fa_code] {e}")
+        return None
     
-
-
-
 async def sms_watcher(
     bot: Bot,
     client: httpx.AsyncClient,
@@ -1197,7 +1201,6 @@ async def sms_watcher(
             )
             await bot.send_message(user_id, reply_msg, parse_mode="HTML", reply_markup=main_keyboard)
             
-            # Send to group with the same format as the image
             group_msg = (
                 f"🔔 🇦🇫 <b>unknown  {service} OTP Received...</b>\n\n"
                 f"⚙️ <b>Service:</b> <code>{service}</code>\n"
@@ -1224,14 +1227,11 @@ async def sms_watcher(
     finally:
         await client.aclose()
 
+# ------------------ FSM & Keyboards ------------------
 
-
-
-   
 class Form(StatesGroup):
     waiting_for_key = State()
-        
-        
+
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Get Number")],
@@ -1240,6 +1240,8 @@ main_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+# ------------------ Bot Command Handlers ------------------
 
 @dp.message(Command("setpassword"))
 async def set_password(message: types.Message):
@@ -1284,7 +1286,6 @@ async def unlock_bot(message: types.Message):
     unlocked_users.add(user_id)
     await message.answer("✅ Bot unlocked for you.")
 
-# حذف تكرار cmd_start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = str(message.from_user.id)
@@ -1309,7 +1310,6 @@ async def cmd_get_tempmail(message: types.Message):
     async with lock:
         if user_id not in user_data or "email" not in user_data[user_id]:
             email = generate_email()
-            # احفظ الإيميل مباشرة
             if user_id not in user_data:
                 user_data[user_id] = {}
             user_data[user_id]["email"] = email
@@ -1336,10 +1336,10 @@ async def get_fresh_csrf_and_client(user_id):
     if not session_cookie or now - session_time > 3600:
         csrf_token = await login_ivasms_and_get_csrf(client)
        
-        cookies = client.cookies.jar
+        cookies_jar = client.cookies.jar
         ivas_sms_session = None
-        for cookie in cookies:
-            if cookie.name == "ivas_sms_session":
+        for cookie in cookies_jar:
+            if getattr(cookie, "name", None) == "ivas_sms_session":
                 ivas_sms_session = cookie.value
                 break
         if ivas_sms_session:
@@ -1348,7 +1348,6 @@ async def get_fresh_csrf_and_client(user_id):
             user_data[user_id]["ivas_sms_session_time"] = now
             save_user_data()
     else:
-        
         client.cookies.set("ivas_sms_session", session_cookie, domain="www.ivasms.com")
         csrf_token = user_info.get("csrf_token")
     return client, csrf_token
@@ -1365,7 +1364,6 @@ async def cmd_get_number(message: types.Message):
     async with lock:
         user_data.setdefault(user_id, {})
 
-        # 1) عندك رقم محفوظ؟ رجّع الرقم لكن جلب CSRF جديد دائماً
         if "number" in user_data[user_id]:
             number = user_data[user_id]["number"]
             range_name = user_data[user_id].get("range_name")
@@ -1377,14 +1375,12 @@ async def cmd_get_number(message: types.Message):
                 parse_mode="HTML",
                 reply_markup=main_keyboard,
             )
-            # شغّل مراقبة SMS حتى عند الرقم المحفوظ
             task = asyncio.create_task(
                 sms_watcher(bot, client, user_id, number, csrf_token, range_name)
             )
             sms_tasks[user_id] = task
             return
 
-        # 2) مهمة SMS شغالة؟
         existing_task = sms_tasks.get(user_id)
         if existing_task and not existing_task.done():
             await message.answer(
@@ -1393,12 +1389,10 @@ async def cmd_get_number(message: types.Message):
             )
             return
 
-        # --- 3) Try to use the cached numbers ---
         async with ivasms_cache_lock:
             cached_numbers = list(ivasms_numbers_cache)
 
         if cached_numbers:
-           
             used_numbers = set(
                 data.get("number")
                 for uid, data in user_data.items()
@@ -1416,14 +1410,12 @@ async def cmd_get_number(message: types.Message):
                 number, range_name = random.choice(cached_numbers)
             client, csrf_token = await get_fresh_csrf_and_client(user_id)
             if not csrf_token:
-                # fallback if login failed
                 await client.aclose()
                 user_clients.pop(user_id, None)
                 await message.answer(
                     "⚠️ Failed to log in to ivasms (cache). Will try to fetch directly...",
                     reply_markup=main_keyboard,
                 )
-             
                 client = await get_user_client(user_id)
                 number, csrf_token, range_name, error = await fetch_sms_for_random_number(client)
                 if error:
@@ -1432,28 +1424,21 @@ async def cmd_get_number(message: types.Message):
                     await message.answer(error, reply_markup=main_keyboard)
                     return
 
-        # --- 4) Save user data ---
         user_data[user_id]["number"] = number
         user_data[user_id]["csrf_token"] = csrf_token
         user_data[user_id]["range_name"] = range_name
         save_user_data()
 
-        # --- 5) Send the number ---
         await message.answer(
             f"📞 <b>Your Number:</b> <code>{number}</code>",
             parse_mode="HTML",
             reply_markup=main_keyboard,
         )
 
-        # --- 6) Start SMS monitoring (do not close client; sms_watcher will close it) ---
         task = asyncio.create_task(
             sms_watcher(bot, client, user_id, number, csrf_token, range_name)
         )
         sms_tasks[user_id] = task
-
-
-
-        
 
 @dp.message(lambda m: m.text and m.text.isdigit())
 async def handle_copy_number(message: types.Message):
@@ -1463,7 +1448,6 @@ async def handle_copy_number(message: types.Message):
         return
     await message.answer(f"Number copied: <code>{escape(message.text)}</code>", parse_mode="HTML")
 
-
 @dp.message(lambda m: m.text == "Get 2FA")
 async def handle_get_2fa(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
@@ -1471,9 +1455,7 @@ async def handle_get_2fa(message: types.Message, state: FSMContext):
         await message.answer("❌ Bot is locked. Use /unlock <password> to access.")
         return
     await state.set_state(Form.waiting_for_key)
-    
     await message.answer("🔑 Please send the 2FA key now:")
-
 
 @dp.message(Form.waiting_for_key)
 async def handle_key_input(message: types.Message, state: FSMContext):
@@ -1488,7 +1470,7 @@ async def handle_key_input(message: types.Message, state: FSMContext):
         await state.clear()
         await cmd_stop(message)  
         return
-    if session_aiohttp is None:
+    if 'session_aiohttp' not in globals() or session_aiohttp is None:
         import aiohttp
         session_aiohttp = aiohttp.ClientSession()
     code = await fetch_2fa_code(key, session_aiohttp)
@@ -1497,7 +1479,6 @@ async def handle_key_input(message: types.Message, state: FSMContext):
         await message.answer("This code is valid for 30 seconds only. If it does not work, please try again.")
     else:
         await message.answer("❌ Failed to fetch 2FA code. Please make sure the key is valid.")
-
     await state.clear()
 
 @dp.message(lambda m: m.text == "Stop")
@@ -1509,7 +1490,6 @@ async def cmd_stop(message: types.Message):
     if user_id in user_data:
         user_data[user_id]["stop_mail"] = True
         user_data[user_id]["stop_sms"] = True
-        # إلغاء مهمة SMS إذا كانت موجودة
         sms_task = sms_tasks.get(user_id)
         if sms_task and not sms_task.done():
             sms_task.cancel()
@@ -1522,9 +1502,7 @@ async def cmd_stop(message: types.Message):
         for key in ["email", "last_mail_id", "number", "range_name"]:
             if key in user_data[user_id]:
                 del user_data[user_id][key]
-        # حذف القفل الخاص بالمستخدم
         user_locks.pop(user_id, None)
-        # إغلاق جلسة httpx الخاصة بالمستخدم
         client = user_clients.pop(user_id, None)
         if client:
             await client.aclose()
@@ -1578,6 +1556,8 @@ async def cmd_monitor_sms(message: types.Message):
         logging.error(f"Error in monitor SMS: {e}")
         await message.answer("❌ Error occurred while monitoring messages")
 
+# ------------------ mail_checker & cleanup ------------------
+
 async def mail_checker():
     while True:
         for user_id, data in user_data.items():
@@ -1599,7 +1579,7 @@ async def mail_checker():
                     subject = newest_mail.get("subject", "(No Subject)") or "(No Subject)"
                     sender_name = newest_mail.get("from_name", "")
                     sender_mail = newest_mail.get("from_mail", "")
-                    time = newest_mail.get("time", "")
+                    time_ = newest_mail.get("time", "")
 
                     try:
                         mail_text = await fetch_mail_content(email, newest_mail["mail_id"])
@@ -1619,7 +1599,7 @@ async def mail_checker():
                         f"<b>📧 Your email:</b> <code>{escape(email)}</code>\n"
                         f"<b>👤 From:</b> {escape(sender_name)} &lt;{escape(sender_mail)}&gt;\n"
                         f"<b>📝 Subject:</b> {escape(subject)}\n"
-                        f"<b>🕒 Time:</b> {escape(time)}\n\n"
+                        f"<b>🕒 Time:</b> {escape(time_)}\n\n"
                         f"🔥 <b>OTP Code:</b> <code>{otp_code}</code>\n"
                         f"<b>📨 Content:</b>\n"
                         f"<pre>{escape(mail_text_clean)}</pre>"
@@ -1635,7 +1615,6 @@ async def cleanup_inactive_users():
             if now - last_active > INACTIVITY_TIMEOUT
         ]
         for user_id in inactive_users:
-           
             sms_task = sms_tasks.get(user_id)
             if sms_task and not sms_task.done():
                 sms_task.cancel()
@@ -1644,29 +1623,86 @@ async def cleanup_inactive_users():
                 except asyncio.CancelledError:
                     pass
                 del sms_tasks[user_id]
-            
             user_locks.pop(user_id, None)
-            
             user_last_active.pop(user_id, None)
-           
-        await asyncio.sleep(300)  
+        await asyncio.sleep(300)
+
+# ------------------ Webhook integration (Flask) ------------------
+
+WEBHOOK_HOST = f"https://{os.getenv('PYANYWHERE_USER')}.pythonanywhere.com"
+WEBHOOK_PATH = f"/webhook/{TOKEN}"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+
+app = Flask(__name__)
+
+# global reference to asyncio loop so we can schedule coros from Flask thread
+ASYNC_LOOP = None
+
+@app.route(WEBHOOK_PATH, methods=["POST"])
+def webhook_handler():
+    try:
+        payload = request.get_json(force=True)
+        update = types.Update.model_validate(payload, context={"bot": bot})
+        if ASYNC_LOOP is None:
+            # loop not ready (shouldn't happen after startup) - fallback
+            asyncio.run(dp.feed_update(bot, update))
+        else:
+            # schedule coroutine on the main event loop
+            asyncio.run_coroutine_threadsafe(dp.feed_update(bot, update), ASYNC_LOOP)
+    except Exception as e:
+        logging.error(f"Webhook error: {e}", exc_info=True)
+    return "ok", 200
+
+async def on_startup():
+    try:
+        await bot.delete_webhook()
+        await bot.set_webhook(WEBHOOK_URL)
+        print(f"✅ Webhook set to {WEBHOOK_URL}")
+    except Exception as e:
+        logging.error(f"Failed to set webhook: {e}", exc_info=True)
+
+def run_flask():
+    # In many hosting environments Flask is started by WSGI; for direct run we keep this.
+    # On PythonAnywhere the WSGI config will import `app` variable; leaving run for local debug.
+    app.run(host="0.0.0.0", port=8000)
+
+# ------------------ Main startup ------------------
 
 async def main():
-    global session_aiohttp, client_httpx
-    import aiohttp
+    global session_aiohttp, client_httpx, ASYNC_LOOP
+    import aiohttp, httpx
     session_aiohttp = aiohttp.ClientSession()
-    import httpx
     client_httpx = httpx.AsyncClient()
-    try:
-        asyncio.create_task(mail_checker())
-        asyncio.create_task(ivasms_numbers_refresher())
-        asyncio.create_task(cleanup_inactive_users()) 
-        asyncio.create_task(start_sms_monitoring())  
-        print("🚀 Starting bot polling...")
-        await dp.start_polling(bot)
-    finally:
-        await session_aiohttp.close()
-        await client_httpx.aclose()
+    ASYNC_LOOP = asyncio.get_running_loop()
+
+    # start background tasks
+    asyncio.create_task(mail_checker())
+    asyncio.create_task(ivasms_numbers_refresher())
+    asyncio.create_task(cleanup_inactive_users())
+    asyncio.create_task(start_sms_monitoring())
+
+    # set webhook
+    await on_startup()
+
+    # keep running (the loop will continue because of tasks)
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Run Flask in a separate thread for webhook handling (useful for local testing).
+    threading.Thread(target=run_flask, daemon=True).start()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            if 'session_aiohttp' in globals() and session_aiohttp:
+                asyncio.run(session_aiohttp.close())
+        except Exception:
+            pass
+        try:
+            if 'client_httpx' in globals() and client_httpx:
+                asyncio.run(client_httpx.aclose())
+        except Exception:
+            pass
