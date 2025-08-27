@@ -1,0 +1,89 @@
+2025-08-27 07:40:47,282 - INFO - Successfully loaded user data.
+2025-08-27 07:40:47,283 - INFO - [Cache] Loaded 480 numbers from disk.
+2025-08-27 07:40:47,283 - INFO - Bot is starting polling...
+2025-08-27 07:40:47,283 - INFO - Start polling
+2025-08-27 07:40:47,283 - INFO - [Refresher] Starting number refresh task...
+2025-08-27 07:40:48,551 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:40:49,195 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:40:49,196 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:40:49,196 - WARNING - [Refresher] Failed to fetch numbers. Using old cache if available.
+2025-08-27 07:40:55,688 - INFO - Update id=659416906 is handled. Duration 750 ms by bot id=8362828818
+2025-08-27 07:40:57,295 - INFO - Update id=659416907 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:41:02,946 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:41:03,497 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:41:03,498 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:41:03,871 - INFO - Update id=659416908 is handled. Duration 1969 ms by bot id=8362828818
+2025-08-27 07:41:33,460 - INFO - Update id=659416909 is handled. Duration 360 ms by bot id=8362828818
+2025-08-27 07:41:36,354 - INFO - Update id=659416910 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:41:41,510 - INFO - Update id=659416911 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:41:44,959 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:41:45,561 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:41:45,562 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:41:45,952 - INFO - Update id=659416912 is handled. Duration 2657 ms by bot id=8362828818
+2025-08-27 07:42:06,050 - INFO - Update id=659416913 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:42:21,115 - INFO - Update id=659416914 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:42:29,002 - INFO - Polling stopped
+2025-08-27 07:42:29,003 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2025-08-27 07:42:29,003 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8362828818)
+2025-08-27 07:42:29,301 - INFO - Bot stopped manually.
+2025-08-27 07:42:55,213 - INFO - Successfully loaded user data.
+2025-08-27 07:42:55,214 - INFO - [Cache] Loaded 480 numbers from disk.
+2025-08-27 07:42:55,214 - INFO - Bot is starting polling...
+2025-08-27 07:42:55,214 - INFO - Start polling
+2025-08-27 07:42:55,215 - INFO - [Refresher] Starting number refresh task...
+2025-08-27 07:42:56,449 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:42:57,047 - INFO - Update id=659416916 is handled. Duration 765 ms by bot id=8362828818
+2025-08-27 07:42:57,059 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:42:57,060 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:42:57,060 - WARNING - [Refresher] Failed to fetch numbers. Using old cache if available.
+2025-08-27 07:42:58,592 - INFO - Update id=659416917 is handled. Duration 389 ms by bot id=8362828818
+2025-08-27 07:43:00,721 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:43:01,324 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:43:01,325 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:43:01,694 - INFO - Update id=659416918 is handled. Duration 2046 ms by bot id=8362828818
+2025-08-27 07:44:16,320 - INFO - Polling stopped
+2025-08-27 07:44:16,321 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2025-08-27 07:44:16,321 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8362828818)
+2025-08-27 07:44:16,580 - INFO - Bot stopped manually.
+2025-08-27 07:44:25,163 - INFO - Successfully loaded user data.
+2025-08-27 07:44:25,163 - INFO - [Cache] Loaded 480 numbers from disk.
+2025-08-27 07:44:25,163 - INFO - Bot is starting polling...
+2025-08-27 07:44:25,165 - INFO - Start polling
+2025-08-27 07:44:25,165 - INFO - [Refresher] Starting number refresh task...
+2025-08-27 07:44:26,450 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:44:26,991 - INFO - Update id=659416919 is handled. Duration 750 ms by bot id=8362828818
+2025-08-27 07:44:27,099 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:44:27,099 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:44:27,100 - WARNING - [Refresher] Failed to fetch numbers. Using old cache if available.
+2025-08-27 07:44:28,289 - INFO - Update id=659416920 is handled. Duration 375 ms by bot id=8362828818
+2025-08-27 07:44:30,103 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:44:30,672 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:44:30,673 - ERROR - Login to IVASMS failed. Check credentials.
+2025-08-27 07:44:31,040 - INFO - Update id=659416921 is handled. Duration 2094 ms by bot id=8362828818
+2025-08-27 07:45:55,648 - INFO - Polling stopped
+2025-08-27 07:45:55,649 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2025-08-27 07:45:55,649 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8362828818)
+2025-08-27 07:45:55,908 - INFO - Bot stopped manually.
+2025-08-27 07:46:04,568 - INFO - Successfully loaded user data.
+2025-08-27 07:46:04,569 - INFO - [Cache] Loaded 480 numbers from disk.
+2025-08-27 07:46:04,569 - INFO - Bot is starting polling...
+2025-08-27 07:46:04,569 - INFO - Start polling
+2025-08-27 07:46:04,569 - INFO - [Refresher] Starting number refresh task...
+2025-08-27 07:46:05,834 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:46:06,497 - INFO - Update id=659416922 is handled. Duration 734 ms by bot id=8362828818
+2025-08-27 07:46:06,701 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:46:06,702 - ERROR - Login to IVASMS failed. Status: 422. Check credentials.
+2025-08-27 07:46:06,702 - WARNING - [Refresher] Failed to fetch numbers. Using old cache if available.
+2025-08-27 07:46:09,456 - INFO - Update id=659416923 is handled. Duration 359 ms by bot id=8362828818
+2025-08-27 07:46:12,011 - INFO - HTTP Request: GET https://www.ivasms.com/login "HTTP/1.1 200 OK"
+2025-08-27 07:46:12,583 - INFO - HTTP Request: POST https://www.ivasms.com/login "HTTP/1.1 422 Unprocessable Entity"
+2025-08-27 07:46:12,584 - ERROR - Login to IVASMS failed. Status: 422. Check credentials.
+2025-08-27 07:46:12,589 - ERROR - Error during login for user 5705479420: 1 validation error for EditMessageText
+reply_markup
+  Input should be a valid dictionary or instance of InlineKeyboardMarkup [type=model_type, input_value=ReplyKeyboardMarkup(keybo...er=None, selective=None), input_type=ReplyKeyboardMarkup]
+    For further information visit https://errors.pydantic.dev/2.11/v/model_type
+2025-08-27 07:46:12,589 - INFO - Update id=659416924 is not handled. Duration 2125 ms by bot id=8362828818
+2025-08-27 07:47:44,993 - INFO - Polling stopped
+2025-08-27 07:47:44,993 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2025-08-27 07:47:44,994 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8362828818)
+2025-08-27 07:47:45,252 - INFO - Bot stopped manually.
